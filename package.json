@@ -1,0 +1,35 @@
+{
+    "name": "etcdc",
+    "description": "Node etcd client",
+    "homepage": "http://github.com/oleksiyk/etcdc",
+    "author": {
+        "name": "Oleksiy Krivoshey",
+        "email": "oleksiyk@gmail.com"
+    },
+    "version": "0.0.1",
+    "main": "./index.js",
+    "dependencies": {
+        "bluebird": "~=1.0.*",
+        "request": "~=2.33.0",
+        "uid2": "~=0.0.3"
+    },
+    "devDependencies": {
+        "chai": "~=1.8.1",
+        "sinon-chai": "~=2.4.0",
+        "chai-as-promised": "~=4.1.0",
+        "mocha-as-promised": "~=2.0.0"
+    },
+    "bugs": {
+        "url": "https://github.com/oleksiyk/etcdc/issues"
+    },
+    "scripts": {
+        "test": "mocha"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/oleksiyk/etcdc.git"
+    },
+    "readme": "Node etcd client",
+    "readmeFilename": "README.md",
+    "license": "MIT"
+}
