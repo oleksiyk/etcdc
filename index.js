@@ -51,8 +51,8 @@ Etcdc.prototype.lock = function(name, ttl) {
 
     ttl = ttl || 60; // seconds
 
-    function _wait(){
-        return self.wait('locks_' + name).then(function() {
+    function _wait(index){
+        return self.wait('locks_' + name, { waitIndex: index }).then(function() {
             return _setLock()
         })
     }
@@ -64,7 +64,7 @@ Etcdc.prototype.lock = function(name, ttl) {
         })
         .catch(function(err) {
             if(err.errorCode === 105){
-                return _wait()
+                return _wait(err.index)
             }
             throw err
         })
@@ -88,32 +88,66 @@ Etcdc.prototype.renewLock = function(name, value, ttl) {
 }
 
 Etcdc.prototype.limitLock = function(name, limit) {
-    var self = this, lock;
+    var self = this, lock, waitIndex;
 
-    function _wait(){
-        return self.wait('limitCounters_' + name) // unlock?
+    function _increment() {
+        return self.lock('limit_lock_' + name).then(function(_lock) {
+            lock = _lock;
+
+            return self.get('limitCounters_' + name)
+            .then(function(result) {
+                waitIndex = result.modifiedIndex
+                return parseInt(result.node.value, 10)
+            })
+            .catch(function(err) {
+                if(err.errorCode !== 100){
+                    throw err
+                }
+                waitIndex = err.index
+                return 0
+            })
+            .then(function(count) {
+                if(count < limit){
+                    return self.set('limitCounters_' + name, count + 1).return(true)
+                }
+            })
+        })
+        .finally(function() {
+            if(lock){
+                return self.unlock('limit_lock_' + name, lock)
+            }
+        })
+        .then(function(ok) {
+            if(!ok){
+                return self.wait('limitCounters_' + name, { waitIndex: waitIndex }).then(function() {
+                    return _increment()
+                })
+            }
+        })
     }
 
+    return _increment()
+}
+
+Etcdc.prototype.limitUnlock = function(name) {
+    var self = this, lock;
+
     return self.lock('limit_lock_' + name).then(function(_lock) {
+        console.log('limitUnlock', 'locked')
         lock = _lock;
-        return self.get('limitCounters_' + name)
-        .then(function(result) {
+        return self.get('limitCounters_' + name).then(function(result) {
             return parseInt(result.node.value, 10)
         })
-        .catch(function(err) {
-            if(err.errorCode !== 100){
-                throw err
-            }
-            return 0
-        })
         .then(function(count) {
-            if(count >= limit){
-                return _wait()
-            }
-            return self.set('limitCounters_' + name, count + 1)
+            console.log('limitUnlock', 'count=', count)
+            return self.set('limitCounters_' + name, count - 1)
         })
-    }).finally(function() {
-        return self.unlock(lock)
+    })
+    .finally(function() {
+        console.log('limitUnlock', 'unlocking, lock=', lock)
+        if(lock){
+            return self.unlock('limit_lock_' + name, lock)
+        }
     })
 }
 
